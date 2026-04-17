@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EcoSense — Real-Time Pollution Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #080C12;
+    --bg2:       #0D1520;
+    --bg3:       #121D2A;
+    --border:    rgba(0,200,160,0.15);
+    --border2:   rgba(0,200,160,0.35);
+    --cyan:      #00D4A8;
+    --cyan2:     #00FFC8;
+    --amber:     #FFB830;
+    --red:       #FF4C5B;
+    --green:     #2EE88A;
+    --blue:      #3AAFFF;
+    --text:      #C8DCE8;
+    --text2:     #6A8899;
+    --text3:     #3A5260;
+    --mono:      'Share Tech Mono', monospace;
+    --head:      'Orbitron', sans-serif;
+    --body:      'Rajdhani', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,168,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,168,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo-area { display: flex; flex-direction: column; gap: 2px; }
+  .logo {
+    font-family: var(--head);
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: var(--cyan2);
+    text-shadow: 0 0 20px rgba(0,255,200,.4);
+  }
+  .logo span { color: var(--text2); font-weight: 400; }
+  .subtitle { font-size: 12px; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+  .status-pill .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  #clock {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+
+  /* ── SECTION LABELS ── */
+  .section-label {
+    font-family: var(--head);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── GRID ── */
+  .grid-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .grid-mid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .grid-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .span2 { grid-column: span 2; }
+
+  @media(max-width:820px) {
+    .grid-top, .grid-mid { grid-template-columns: 1fr 1fr; }
+    .grid-bottom { grid-template-columns: 1fr; }
+    .span2 { grid-column: span 1; }
+  }
+  @media(max-width:520px) {
+    .grid-top, .grid-mid, .grid-bottom { grid-template-columns: 1fr; }
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .3s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: .4;
+  }
+
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-label .icon {
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    opacity: .8;
+  }
+
+  .big-value {
+    font-family: var(--mono);
+    font-size: 52px;
+    line-height: 1;
+    color: var(--cyan2);
+    letter-spacing: -1px;
+    transition: color .5s;
+  }
+  .big-unit {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text2);
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  .mid-value {
+    font-family: var(--mono);
+    font-size: 38px;
+    line-height: 1;
+    color: var(--cyan2);
+    transition: color .5s;
+  }
+
+  .card-status {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .st-good    { background: rgba(46,232,138,.12); color: var(--green); border: 1px solid rgba(46,232,138,.3); }
+  .st-mod     { background: rgba(255,184,48,.12);  color: var(--amber); border: 1px solid rgba(255,184,48,.3); }
+  .st-bad     { background: rgba(255,76,91,.12);   color: var(--red);   border: 1px solid rgba(255,76,91,.3); }
+  .st-safe    { background: rgba(58,175,255,.12);  color: var(--blue);  border: 1px solid rgba(58,175,255,.3); }
+
+  /* ── GAUGE (SVG arc) ── */
+  .gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .gauge-svg { overflow: visible; }
+
+  /* ── SPARKLINE ── */
+  .spark-wrap { margin-top: 10px; }
+  canvas.spark { width: 100%; height: 52px; display: block; border-radius: 4px; }
+
+  /* ── HISTORY CHART ── */
+  .chart-card { padding: 20px; }
+  canvas#histChart { width: 100%; height: 180px; display: block; }
+
+  /* ── ALERT STRIP ── */
+  .alert-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,76,91,.08);
+    border: 1px solid rgba(255,76,91,.25);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--red);
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .alert-strip.show { display: flex; animation: fadeIn .4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+  footer .ft-left { font-size: 12px; color: var(--text3); letter-spacing: 1px; }
+  footer .ft-right { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* ── NUMBER FLIP ANIMATION ── */
+  .flip { animation: flip .3s ease; }
+  @keyframes flip {
+    0%   { opacity:.3; transform: translateY(-4px); }
+    100% { opacity:1;  transform: translateY(0); }
+  }
+
+  /* ── SMALL DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+  /* Progress bar */
+  .pbar-wrap { margin-top: 10px; }
+  .pbar-bg { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .pbar-fill { height: 100%; border-radius: 2px; transition: width .8s ease, background .5s; }
+
+  .info-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-top: 5px; }
+
+  /* Decorative corner brackets */
+  .card::after {
+    content: '';
+    position: absolute;
+    bottom: 8px; right: 8px;
+    width: 16px; height: 16px;
+    border-bottom: 1px solid var(--border2);
+    border-right:  1px solid var(--border2);
+    opacity: .5;
+  }
+
+  /* Big AQI card special */
+  .aqi-card { padding: 24px; }
+
+  /* Scan line animation on main gauge */
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: .12;
+    animation: scan 4s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scan { from{top:0%} to{top:100%} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-area">
+      <div class="logo">ECO<span>SENSE</span></div>
+      <div class="subtitle">Real-Time Pollution Detection System</div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill"><span class="dot"></span>Arduino Connected</div>
+      <div id="clock">00:00:00</div>
+    </div>
+  </header>
+
+  <!-- ALERT STRIP -->
+  <div class="alert-strip" id="alertStrip">
+    ⚠ &nbsp;WARNING — Sensor reading exceeds safe threshold. Check environment.
+  </div>
+
+  <!-- AIR SECTION -->
+  <div class="section-label">Air Quality Sensors</div>
+  <div class="grid-top">
+
+    <!-- MQ-135 AQI (big gauge card) -->
+    <div class="card aqi-card">
+      <div class="scan-line"></div>
+      <div class="card-label"><span class="icon">🌬</span>MQ-135 — Air Quality Index</div>
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" width="150" height="90" viewBox="0 0 150 90">
+          <path d="M15,80 A60,60 0 0,1 135,80" fill="none" stroke="#1A2A30" stroke-width="10" stroke-linecap="round"/>
+          <path id="gaugeArc" d="M15,80 A60,60 0 0,1 135,80" fill="none" stroke="url(#gGrad)" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="188" stroke-dashoffset="140" style="transition:stroke-dashoffset .9s ease"/>
+          <defs>
+            <linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-color="#2EE88A"/>
+              <stop offset="50%"  stop-color="#FFB830"/>
+              <stop offset="100%" stop-color="#FF4C5B"/>
+            </linearGradient>
+          </defs>
+          <text id="gaugeVal" x="75" y="72" text-anchor="middle"
+                font-family="'Share Tech Mono',monospace" font-size="26" fill="#00FFC8">---</text>
+          <text x="75" y="84" text-anchor="middle"
+                font-family="'Rajdhani',sans-serif" font-size="9" fill="#6A8899" letter-spacing="1">AQI</text>
+        </svg>
+      </div>
+      <div style="text-align:center">
+        <div id="aqiStatus" class="card-status st-good">Good</div>
+      </div>
+      <div class="pbar-wrap" style="margin-top:14px">
+        <div class="info-row"><span>Min: 0</span><span>Max: 500</span></div>
+        <div class="pbar-bg" style="margin-top:4px">
+          <div id="aqiBar" class="pbar-fill" style="width:20%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Temperature -->
+    <div class="card">
+      <div class="card-label"><span class="icon">🌡</span>DHT22 — Temperature</div>
+      <div class="mid-value" id="tempVal">--.-</div>
+      <span style="font-family:var(--mono);font-size:16px;color:var(--text2)"> °C</span>
+      <div class="divider" style="margin-top:14px"></div>
+      <canvas class="spark" id="tempSpark"></canvas>
+      <div class="info-row" style="margin-top:6px">
+        <span>Min &nbsp;<b id="tempMin" style="color:var(--blue)">--</b></span>
+        <span>Max &nbsp;<b id="tempMax" style="color:var(--amber)">--</b></span>
+      </div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="card">
+      <div class="card-label"><span class="icon">💧</span>DHT22 — Humidity</div>
+      <div class="mid-value" id="humVal">--</div>
+      <span style="font-family:var(--mono);font-size:16px;color:var(--text2)"> %</span>
+      <div class="divider" style="margin-top:14px"></div>
+      <canvas class="spark" id="humSpark"></canvas>
+      <div class="info-row" style="margin-top:6px">
+        <span>Min &nbsp;<b id="humMin" style="color:var(--blue)">--</b></span>
+        <span>Max &nbsp;<b id="humMax" style="color:var(--amber)">--</b></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- WATER SECTION -->
+  <div class="section-label" style="margin-top:8px">Water Quality Sensors</div>
+  <div class="grid-mid">
+
+    <!-- TDS -->
+    <div class="card">
+      <div class="card-label"><span class="icon">⚗</span>TDS Sensor — Dissolved Solids</div>
+      <div class="big-value" id="tdsVal">---</div>
+      <span class="big-unit">ppm</span>
+      <div id="tdsStatus" class="card-status st-safe" style="margin-top:10px">Safe</div>
+      <div class="pbar-wrap" style="margin-top:12px">
+        <div class="pbar-bg"><div id="tdsBar" class="pbar-fill" style="width:30%;background:var(--blue)"></div></div>
+        <div class="info-row"><span>0 ppm</span><span>1000 ppm</span></div>
+      </div>
+    </div>
+
+    <!-- pH -->
+    <div class="card">
+      <div class="card-label"><span class="icon">🧪</span>pH Sensor — Acidity Level</div>
+      <div class="big-value" id="phVal">-.--</div>
+      <span class="big-unit">pH</span>
+      <div id="phStatus" class="card-status st-safe" style="margin-top:10px">Neutral</div>
+      <div class="pbar-wrap" style="margin-top:12px">
+        <div class="pbar-bg"><div id="phBar" class="pbar-fill" style="width:50%;background:var(--cyan)"></div></div>
+        <div class="info-row"><span>0 (acid)</span><span>14 (base)</span></div>
+      </div>
+    </div>
+
+    <!-- Overall water status -->
+    <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div class="card-label"><span class="icon">🌊</span>Overall Water Safety</div>
+        <div style="font-family:var(--head);font-size:28px;font-weight:700;letter-spacing:2px;margin-top:6px" id="waterOverall">SAFE</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.7" id="waterDesc">
+          TDS within acceptable limits.<br>pH in neutral range.
+        </div>
+      </div>
+      <div>
+        <div class="divider"></div>
+        <div style="font-size:11px;color:var(--text3);letter-spacing:1px">LAST SAMPLE</div>
+        <div id="lastSample" style="font-family:var(--mono);font-size:12px;color:var(--cyan);margin-top:3px">--:--:--</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- HISTORY CHART -->
+  <div class="section-label">24-Hour History</div>
+  <div class="grid-bottom">
+    <div class="card chart-card span2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:12px;letter-spacing:2px;color:var(--text2);text-transform:uppercase">Sensor readings over time</div>
+        <div style="display:flex;gap:16px;font-size:11px;letter-spacing:1px">
+          <span style="color:var(--cyan)">● AQI</span>
+          <span style="color:var(--amber)">● Temp °C</span>
+          <span style="color:var(--blue)">● TDS/10</span>
+          <span style="color:var(--green)">● pH×10</span>
+        </div>
+      </div>
+      <canvas id="histChart"></canvas>
+    </div>
+  </div>
+
+  <!-- DEVICE INFO -->
+  <div class="section-label">Device Information</div>
+  <div class="grid-mid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card" style="padding:16px">
+      <div class="card-label">🖥 Controller</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text)">Arduino Uno R3</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">ATmega328P @ 16 MHz</div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="card-label">📡 Sensors</div>
+      <div style="font-size:13px;color:var(--text);line-height:1.9">
+        MQ-135 &nbsp;·&nbsp; DHT22<br>TDS Module &nbsp;·&nbsp; pH Probe
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="card-label">🔄 Update Rate</div>
+      <div style="font-family:var(--mono);font-size:28px;color:var(--cyan)">3<span style="font-size:14px;color:var(--text2)"> sec</span></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px">Serial baud: 9600</div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="ft-left">EcoSense Pollution Monitor — Environment Science Project</div>
+    <div class="ft-right">prototype v1.0 · simulated data</div>
+  </footer>
+
+</div><!-- /wrap -->
+
+<script>
+/* ── Helpers ── */
+const $ = id => document.getElementById(id);
+const rand = (a,b,d=1) => +(a + Math.random()*(b-a)).toFixed(d);
+
+/* ── History buffers ── */
+const N = 30;
+const hist = {
+  labels: [],
+  aqi:  [], temp: [], tds:  [], ph:  [],
+};
+
+/* ── Sparkline canvas renderer ── */
+function drawSpark(canvasId, data, color) {
+  const cvs = $(canvasId);
+  if (!cvs) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cvs.offsetWidth, H = 52;
+  cvs.width = W * dpr; cvs.height = H * dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.scale(dpr, dpr);
+  if (data.length < 2) return;
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v,i) => [i/(data.length-1)*W, H - 4 - (v-min)/range*(H-8)]);
+  ctx.clearRect(0,0,W,H);
+  // Fill
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], H);
+  pts.forEach(([x,y]) => ctx.lineTo(x,y));
+  ctx.lineTo(pts[pts.length-1][0], H);
+  ctx.closePath();
+  const grd = ctx.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0, color+'44');
+  grd.addColorStop(1, color+'00');
+  ctx.fillStyle = grd;
+  ctx.fill();
+  // Line
+  ctx.beginPath();
+  pts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // Dot at end
+  const [lx,ly] = pts[pts.length-1];
+  ctx.beginPath();
+  ctx.arc(lx, ly, 3, 0, Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+/* ── History chart ── */
+let histCtx;
+function initHistChart() {
+  const cvs = $('histChart');
+  const dpr = window.devicePixelRatio || 1;
+  cvs.width  = cvs.offsetWidth  * dpr;
+  cvs.height = 180 * dpr;
+  histCtx = cvs.getContext('2d');
+  histCtx.scale(dpr, dpr);
+}
+function drawHistChart() {
+  if (!histCtx) return;
+  const cvs = $('histChart');
+  const W = cvs.offsetWidth, H = 180;
+  histCtx.clearRect(0,0,W,H);
+  const sets = [
+    { data: hist.aqi,  color:'#00D4A8' },
+    { data: hist.temp, color:'#FFB830' },
+    { data: hist.tds.map(v=>v/10), color:'#3AAFFF' },
+    { data: hist.ph.map(v=>v*10),  color:'#2EE88A' },
+  ];
+  // Grid lines
+  histCtx.strokeStyle = 'rgba(0,200,160,.07)';
+  histCtx.lineWidth = 1;
+  for (let i=0;i<=4;i++) {
+    const y = i*(H/4);
+    histCtx.beginPath(); histCtx.moveTo(0,y); histCtx.lineTo(W,y); histCtx.stroke();
+  }
+  if (hist.aqi.length < 2) return;
+  sets.forEach(({data, color}) => {
+    const max = Math.max(...data.map(Math.abs), 1);
+    const pts = data.map((v,i)=>[i/(data.length-1)*W, H-6-(v/max)*(H-12)]);
+    histCtx.beginPath();
+    pts.forEach(([x,y],i)=>i===0?histCtx.moveTo(x,y):histCtx.lineTo(x,y));
+    histCtx.strokeStyle = color;
+    histCtx.lineWidth = 1.8;
+    histCtx.lineJoin = 'round';
+    histCtx.stroke();
+  });
+}
+
+/* ── Update gauge arc ── */
+function setGauge(val) {
+  const pct = Math.min(val / 500, 1);
+  const total = 188;
+  const offset = total - pct * total;
+  $('gaugeArc').style.strokeDashoffset = offset;
+  $('gaugeVal').textContent = val;
+}
+
+/* ── Status helpers ── */
+function aqiStatus(v) {
+  if (v <= 50)  return ['Good',    'st-good'];
+  if (v <= 150) return ['Moderate','st-mod'];
+  return               ['Poor',    'st-bad'];
+}
+function tdsStatus(v) {
+  if (v < 300)  return ['Safe',        'st-safe'];
+  if (v < 600)  return ['Acceptable',  'st-mod'];
+  return               ['Unsafe',      'st-bad'];
+}
+function phStatus(v) {
+  if (v >= 6.5 && v <= 8.5) return ['Neutral', 'st-safe'];
+  if (v >= 5.5 && v <= 9.0) return ['Mild',    'st-mod'];
+  return                            ['Extreme', 'st-bad'];
+}
+function setStatus(el, label, cls) {
+  el.textContent = label;
+  el.className = 'card-status ' + cls;
+}
+
+/* ── Animated number ── */
+function setNum(el, val) {
+  el.classList.remove('flip');
+  void el.offsetWidth;
+  el.textContent = val;
+  el.classList.add('flip');
+}
+
+/* ── Noise for smooth random walk ── */
+function noiseWalk(prev, min, max, step) {
+  const next = prev + (Math.random()*2-1)*step;
+  return Math.max(min, Math.min(max, +next.toFixed(1)));
+}
+
+/* ── State ── */
+let state = { aqi:72, temp:28.4, hum:65, tds:280, ph:7.1 };
+let tempData=[], humData=[];
+
+/* ── Tick ── */
+function tick() {
+  state.aqi  = Math.round(noiseWalk(state.aqi,  0,   400,  15));
+  state.temp = +noiseWalk(state.temp, 18, 45,  0.5).toFixed(1);
+  state.hum  = +noiseWalk(state.hum,  30, 95,  2  ).toFixed(0);
+  state.tds  = Math.round(noiseWalk(state.tds,  50,  900,  20));
+  state.ph   = +noiseWalk(state.ph,   4.5, 10, 0.1).toFixed(2);
+
+  /* AQI */
+  setGauge(state.aqi);
+  const [aLabel,aCls] = aqiStatus(state.aqi);
+  setStatus($('aqiStatus'), aLabel, aCls);
+  const aqiPct = state.aqi/500*100;
+  const aqiColor = state.aqi<=50?'var(--green)':state.aqi<=150?'var(--amber)':'var(--red)';
+  $('aqiBar').style.width = aqiPct+'%';
+  $('aqiBar').style.background = aqiColor;
+
+  /* Temp */
+  tempData.push(state.temp); if(tempData.length>N) tempData.shift();
+  setNum($('tempVal'), state.temp.toFixed(1));
+  $('tempMin').textContent = Math.min(...tempData).toFixed(1);
+  $('tempMax').textContent = Math.max(...tempData).toFixed(1);
+  drawSpark('tempSpark', tempData, '#FFB830');
+
+  /* Humidity */
+  humData.push(state.hum); if(humData.length>N) humData.shift();
+  setNum($('humVal'), state.hum);
+  $('humMin').textContent = Math.min(...humData);
+  $('humMax').textContent = Math.max(...humData);
+  drawSpark('humSpark', humData, '#3AAFFF');
+
+  /* TDS */
+  setNum($('tdsVal'), state.tds);
+  const [tLabel,tCls] = tdsStatus(state.tds);
+  setStatus($('tdsStatus'), tLabel, tCls);
+  $('tdsBar').style.width = Math.min(state.tds/1000*100,100)+'%';
+  $('tdsBar').style.background = tCls==='st-safe'?'var(--blue)':tCls==='st-mod'?'var(--amber)':'var(--red)';
+
+  /* pH */
+  setNum($('phVal'), state.ph.toFixed(2));
+  const [pLabel,pCls] = phStatus(state.ph);
+  setStatus($('phStatus'), pLabel, pCls);
+  $('phBar').style.width = (state.ph/14*100)+'%';
+  $('phBar').style.background = pCls==='st-safe'?'var(--cyan)':pCls==='st-mod'?'var(--amber)':'var(--red)';
+
+  /* Overall water */
+  const waterBad = tCls==='st-bad' || pCls==='st-bad';
+  const waterMod = tCls==='st-mod' || pCls==='st-mod';
+  const woEl = $('waterOverall');
+  if (waterBad) {
+    woEl.textContent = 'UNSAFE';
+    woEl.style.color = 'var(--red)';
+    $('waterDesc').textContent = 'One or more values exceed safe limits.';
+  } else if (waterMod) {
+    woEl.textContent = 'CAUTION';
+    woEl.style.color = 'var(--amber)';
+    $('waterDesc').textContent = 'Readings near the threshold. Monitor closely.';
+  } else {
+    woEl.textContent = 'SAFE';
+    woEl.style.color = 'var(--green)';
+    $('waterDesc').textContent = 'TDS within acceptable limits.\npH in neutral range.';
+  }
+
+  /* Alert */
+  const alert = $('alertStrip');
+  if (waterBad || state.aqi > 200) {
+    alert.classList.add('show');
+  } else {
+    alert.classList.remove('show');
+  }
+
+  /* History */
+  const now = new Date();
+  const ts = now.toLocaleTimeString('en-IN',{hour12:false});
+  $('lastSample').textContent = ts;
+  hist.labels.push(ts);
+  hist.aqi.push(state.aqi);
+  hist.temp.push(state.temp);
+  hist.tds.push(state.tds);
+  hist.ph.push(state.ph);
+  if (hist.aqi.length > N) {
+    ['aqi','temp','tds','ph','labels'].forEach(k=>hist[k].shift());
+  }
+  drawHistChart();
+}
+
+/* ── Clock ── */
+function updateClock() {
+  $('clock').textContent = new Date().toLocaleTimeString('en-IN',{hour12:false});
+}
+
+/* ── Boot ── */
+window.addEventListener('load', () => {
+  initHistChart();
+  tick();
+  setInterval(tick, 3000);
+  setInterval(updateClock, 1000);
+  updateClock();
+  // Re-init chart on resize
+  window.addEventListener('resize', () => {
+    initHistChart();
+    drawHistChart();
+  });
+});
+</script>
+</body>
+</html>
